@@ -20,3 +20,5 @@ Oracle Database,
 MariaDB,
 SQLite.
 SQL используется в запросах при обращении к базе данных. Знание SQL позволит вам работать с любой реляционной базой данных, которая использует этот язык.
+
+![info](https://ru.wikibrief.org/wiki/SQL_injection)
